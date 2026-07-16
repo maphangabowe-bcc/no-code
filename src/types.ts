@@ -4,6 +4,11 @@ export interface AppMetadata {
   version: string;
   author: string;
   description: string;
+  category?: string;
+  keywords?: string;
+  supportUrl?: string;
+  privacyUrl?: string;
+  customProperties?: Array<{ key: string; value: string }>;
 }
 
 export interface AppIcon {

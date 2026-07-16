@@ -5,7 +5,7 @@ import {
   Fingerprint, Wifi, WifiOff, Bell, Settings, CheckCircle2, 
   AlertTriangle, Terminal, ArrowRight, Eye, Layers, ChevronRight, 
   RefreshCcw, BookOpen, Plus, Info, Check, Package, X, Globe, Sparkle,
-  Upload
+  Upload, Tag, Trash2
 } from 'lucide-react';
 import { AppMetadata, AppDesign, AppPermissions, AppIcon } from './types';
 import { MOBILE_TEMPLATES } from './templates';
@@ -55,7 +55,15 @@ export default function App() {
     packageId: 'com.boutique.brewapp',
     version: '1.0.0',
     author: 'Brewmaster Coffee',
-    description: 'An interactive boutique coffee menu app with custom orders and shopping cart.'
+    description: 'An interactive boutique coffee menu app with custom orders and shopping cart.',
+    category: 'Food & Drink',
+    keywords: 'coffee, cafe, shop, boutique, menu, order',
+    supportUrl: 'https://brewmaster.example.com/support',
+    privacyUrl: 'https://brewmaster.example.com/privacy',
+    customProperties: [
+      { key: 'ad_supported', value: 'false' },
+      { key: 'min_age', value: '3+' }
+    ]
   });
 
   const [design, setDesign] = useState<AppDesign>({
@@ -169,7 +177,15 @@ export default function App() {
           packageId: 'com.boutique.brewapp',
           version: '1.0.0',
           author: 'Brewmaster Coffee',
-          description: 'Boutique coffee menu ordering application'
+          description: 'Boutique coffee menu ordering application',
+          category: 'Food & Drink',
+          keywords: 'coffee, cafe, shop, boutique, menu, order',
+          supportUrl: 'https://brewmaster.example.com/support',
+          privacyUrl: 'https://brewmaster.example.com/privacy',
+          customProperties: [
+            { key: 'ad_supported', value: 'false' },
+            { key: 'min_age', value: '3+' }
+          ]
         });
         setIcon({
           shape: 'squircle',
@@ -184,7 +200,15 @@ export default function App() {
           packageId: 'com.alexrivera.linkbio',
           version: '1.0.2',
           author: 'Alex Rivera',
-          description: 'Elegant link aggregator & portfolio'
+          description: 'Elegant link aggregator & portfolio',
+          category: 'Business & Portfolio',
+          keywords: 'links, bio, portfolio, cv, social, alex',
+          supportUrl: 'https://alexrivera.example.com/contact',
+          privacyUrl: 'https://alexrivera.example.com/privacy',
+          customProperties: [
+            { key: 'pro_badge', value: 'true' },
+            { key: 'analytics_enabled', value: 'true' }
+          ]
         });
         setIcon({
           shape: 'circle',
@@ -199,7 +223,15 @@ export default function App() {
           packageId: 'com.pulsefit.logger',
           version: '1.1.0',
           author: 'PulseFit Labs',
-          description: 'Daily gym and fitness workout logging application'
+          description: 'Daily gym and fitness workout logging application',
+          category: 'Health & Fitness',
+          keywords: 'fitness, gym, workout, tracker, pulse, fit',
+          supportUrl: 'https://pulsefit.example.com/help',
+          privacyUrl: 'https://pulsefit.example.com/privacy',
+          customProperties: [
+            { key: 'offline_mode', value: 'true' },
+            { key: 'health_kit_sync', value: 'false' }
+          ]
         });
         setIcon({
           shape: 'squircle',
@@ -214,7 +246,16 @@ export default function App() {
           packageId: 'com.gem.minerclicker',
           version: '2.0.0',
           author: 'GemTap Studio',
-          description: 'An interactive idle mining clicker game.'
+          description: 'An interactive idle mining clicker game.',
+          category: 'Games (Casual)',
+          keywords: 'game, casual, idle, clicker, gems, miner',
+          supportUrl: 'https://gemtap.example.com/support',
+          privacyUrl: 'https://gemtap.example.com/privacy',
+          customProperties: [
+            { key: 'ad_supported', value: 'true' },
+            { key: 'min_age', value: '12+' },
+            { key: 'multiplayer', value: 'false' }
+          ]
         });
         setIcon({
           shape: 'rounded-rect',
@@ -378,6 +419,33 @@ export default function App() {
     element.click();
     element.remove();
     triggerToast("Downloaded simulated APK successfully!");
+  };
+
+  const handleAddCustomProperty = () => {
+    const props = meta.customProperties || [];
+    setMeta({
+      ...meta,
+      customProperties: [...props, { key: '', value: '' }]
+    });
+    triggerToast("Added custom metadata property slot");
+  };
+
+  const handleUpdateCustomProperty = (index: number, key: string, value: string) => {
+    const props = [...(meta.customProperties || [])];
+    props[index] = { key, value };
+    setMeta({
+      ...meta,
+      customProperties: props
+    });
+  };
+
+  const handleRemoveCustomProperty = (index: number) => {
+    const props = (meta.customProperties || []).filter((_, idx) => idx !== index);
+    setMeta({
+      ...meta,
+      customProperties: props
+    });
+    triggerToast("Removed custom property");
   };
 
   const handleCustomIconUpload = (file: File) => {
@@ -869,6 +937,120 @@ export default function App() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition resize-none"
                     placeholder="Short description for app store manifest..."
                   />
+                </div>
+
+                {/* Extended App Store Description Metadata */}
+                <div className="pt-4 border-t border-slate-800/60 space-y-4">
+                  <div className="flex items-center gap-1.5 pb-1">
+                    <Tag className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-200">Store Listing & SEO Description Metadata</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">App Category</label>
+                      <select
+                        value={meta.category || 'Utility'}
+                        onChange={(e) => setMeta({ ...meta, category: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition"
+                      >
+                        <option value="Food & Drink">Food & Drink</option>
+                        <option value="Business & Portfolio">Business & Portfolio</option>
+                        <option value="Health & Fitness">Health & Fitness</option>
+                        <option value="Games (Casual)">Games (Casual)</option>
+                        <option value="Productivity">Productivity</option>
+                        <option value="Social Networking">Social Networking</option>
+                        <option value="Education">Education</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Utilities">Utilities</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Search Keywords (Comma-separated)</label>
+                      <input
+                        type="text"
+                        value={meta.keywords || ''}
+                        onChange={(e) => setMeta({ ...meta, keywords: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition"
+                        placeholder="e.g. coffee, shop, boutique, drinks"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Support Website URL</label>
+                      <input
+                        type="url"
+                        value={meta.supportUrl || ''}
+                        onChange={(e) => setMeta({ ...meta, supportUrl: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition font-mono text-[11px]"
+                        placeholder="https://example.com/support"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-300">Privacy Policy URL</label>
+                      <input
+                        type="url"
+                        value={meta.privacyUrl || ''}
+                        onChange={(e) => setMeta({ ...meta, privacyUrl: e.target.value })}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 transition font-mono text-[11px]"
+                        placeholder="https://example.com/privacy"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Custom Metadata Attributes Section */}
+                  <div className="pt-2 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1">
+                        <Info className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-300">Custom Manifest/Listing Properties</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddCustomProperty}
+                        className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20 px-2 py-1 rounded-lg transition"
+                      >
+                        <Plus className="w-3 h-3" /> Add Property
+                      </button>
+                    </div>
+
+                    {meta.customProperties && meta.customProperties.length > 0 ? (
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {meta.customProperties.map((prop, idx) => (
+                          <div key={idx} className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              value={prop.key}
+                              onChange={(e) => handleUpdateCustomProperty(idx, e.target.value, prop.value)}
+                              placeholder="Property Key (e.g. min_age)"
+                              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+                            />
+                            <input
+                              type="text"
+                              value={prop.value}
+                              onChange={(e) => handleUpdateCustomProperty(idx, prop.key, e.target.value)}
+                              placeholder="Property Value (e.g. 3+)"
+                              className="flex-1 bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCustomProperty(idx)}
+                              className="p-2 bg-slate-950 border border-slate-800 hover:border-red-500 hover:bg-red-500/10 text-slate-500 hover:text-red-400 rounded-lg transition shrink-0"
+                              title="Delete metadata property"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center p-4 bg-slate-950/40 rounded-xl border border-slate-800 border-dashed">
+                        <span className="text-[11px] text-slate-500">No custom metadata tags. Click "Add Property" to attach custom variables.</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -45,6 +45,11 @@ app/build/outputs/apk/debug/app-debug.apk
 - **Version**: ${meta.version}
 - **Primary Color**: ${design.primaryColor}
 - **Orientation**: ${design.orientation}
+- **Category**: ${meta.category || 'Utility'}
+- **Keywords**: ${meta.keywords || 'N/A'}
+- **Support URL**: ${meta.supportUrl || 'N/A'}
+- **Privacy Policy URL**: ${meta.privacyUrl || 'N/A'}
+${meta.customProperties && meta.customProperties.length > 0 ? `- **Custom Developer Metadata**:\n${meta.customProperties.map(p => `  - \`${p.key}\`: ${p.value}`).join('\n')}\n` : ''}
 - **Permissions Mapped**:
 ${permissions.internet ? '  - INTERNET (Enabled)\n' : ''}${permissions.camera ? '  - CAMERA (Enabled)\n' : ''}${permissions.location ? '  - ACCESS_FINE_LOCATION (Enabled)\n' : ''}${permissions.notifications ? '  - POST_NOTIFICATIONS (Enabled)\n' : ''}${permissions.biometric ? '  - USE_BIOMETRIC (Enabled)\n' : ''}
 `;
@@ -139,6 +144,22 @@ dependencies {
   // 7. App Assets: www directory with HTML
   zip.file("app/src/main/assets/www/index.html", htmlCode);
   zip.file("app/src/main/assets/www/icon.svg", iconSvg);
+  
+  // Custom metadata and Store Listing descriptions file
+  const customMetadataJson = {
+    appName: meta.name,
+    packageId: meta.packageId,
+    version: meta.version,
+    author: meta.author,
+    description: meta.description,
+    category: meta.category || "Utility",
+    keywords: meta.keywords || "",
+    supportUrl: meta.supportUrl || "",
+    privacyUrl: meta.privacyUrl || "",
+    customProperties: meta.customProperties || [],
+    generatedAt: new Date().toISOString()
+  };
+  zip.file("app/src/main/assets/www/app-metadata.json", JSON.stringify(customMetadataJson, null, 2));
 
   // 8. Manifest File
   const androidManifest = `<?xml version="1.0" encoding="utf-8"?>
