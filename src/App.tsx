@@ -4,7 +4,8 @@ import {
   ShieldCheck, Download, Code, Play, RefreshCw, RotateCw, 
   Fingerprint, Wifi, WifiOff, Bell, Settings, CheckCircle2, 
   AlertTriangle, Terminal, ArrowRight, Eye, Layers, ChevronRight, 
-  RefreshCcw, BookOpen, Plus, Info, Check, Package, X, Globe, Sparkle
+  RefreshCcw, BookOpen, Plus, Info, Check, Package, X, Globe, Sparkle,
+  Upload
 } from 'lucide-react';
 import { AppMetadata, AppDesign, AppPermissions, AppIcon } from './types';
 import { MOBILE_TEMPLATES } from './templates';
@@ -80,7 +81,9 @@ export default function App() {
     shape: 'squircle',
     iconName: 'Coffee',
     text: 'BB',
-    gradient: 'from-amber-600 to-amber-950'
+    gradient: 'from-amber-600 to-amber-950',
+    useCustomImage: false,
+    customImageMode: 'cover'
   });
 
   const [activeTab, setActiveTab] = useState<'config' | 'source' | 'design' | 'compile'>('source');
@@ -377,6 +380,25 @@ export default function App() {
     triggerToast("Downloaded simulated APK successfully!");
   };
 
+  const handleCustomIconUpload = (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      triggerToast('Error: Please select a valid image file');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      setIcon(prev => ({
+        ...prev,
+        customImageUrl: dataUrl,
+        useCustomImage: true
+      }));
+      triggerToast('Custom app icon uploaded successfully!');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const downloadSourceZip = () => {
     if (!zipBlob) return;
     const element = document.createElement("a");
@@ -407,6 +429,36 @@ export default function App() {
 
     const rx = icon.shape === 'circle' ? '50%' : icon.shape === 'squircle' ? '30%' : '15%';
 
+    if (icon.useCustomImage && icon.customImageUrl) {
+      if (icon.customImageMode === 'cover') {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <clipPath id="shape-clip">
+      <rect width="100" height="100" rx="${rx}" />
+    </clipPath>
+  </defs>
+  <rect width="100" height="100" rx="${rx}" fill="#0f172a" />
+  <image href="${icon.customImageUrl}" x="0" y="0" width="100" height="100" clip-path="url(#shape-clip)" preserveAspectRatio="xMidYMid slice" />
+</svg>`;
+      } else {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${startCol}" />
+      <stop offset="100%" stop-color="${endCol}" />
+    </linearGradient>
+    <clipPath id="shape-clip">
+      <rect width="100" height="100" rx="${rx}" />
+    </clipPath>
+  </defs>
+  <rect width="100" height="100" rx="${rx}" fill="url(#bg-grad)" />
+  <g clip-path="url(#shape-clip)">
+    <image href="${icon.customImageUrl}" x="20" y="20" width="60" height="60" preserveAspectRatio="xMidYMid contain" />
+  </g>
+</svg>`;
+      }
+    }
+
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
   <defs>
     <linearGradient id="bg-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -421,6 +473,61 @@ export default function App() {
 
   // Find glyph icon component
   const SelectedIconComponent = LAUNCHER_GLYPHS.find(g => g.name === icon.iconName || g.icon.name === icon.iconName)?.icon || Smartphone;
+
+  // Render uniform application icon across all emulator screen contexts
+  const renderAppIcon = (sizeClass: string, iconSizeClass: string) => {
+    let roundedClass = 'rounded-2xl';
+    if (icon.shape === 'circle') {
+      roundedClass = 'rounded-full';
+    } else if (icon.shape === 'squircle') {
+      if (sizeClass.includes('w-28')) roundedClass = 'rounded-[32px]';
+      else if (sizeClass.includes('w-20')) roundedClass = 'rounded-[24px]';
+      else roundedClass = 'rounded-xl';
+    } else { // rounded-rect
+      if (sizeClass.includes('w-28')) roundedClass = 'rounded-2xl';
+      else if (sizeClass.includes('w-20')) roundedClass = 'rounded-xl';
+      else roundedClass = 'rounded-lg';
+    }
+
+    const bgClass = `bg-gradient-to-tr ${icon.gradient}`;
+
+    if (icon.useCustomImage && icon.customImageUrl) {
+      if (icon.customImageMode === 'cover') {
+        return (
+          <div className={`${sizeClass} ${roundedClass} bg-slate-950 overflow-hidden relative shadow-md flex items-center justify-center p-0`}>
+            <img 
+              src={icon.customImageUrl} 
+              alt="Custom Icon" 
+              className="w-full h-full object-cover" 
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        );
+      } else {
+        return (
+          <div className={`${sizeClass} ${roundedClass} ${bgClass} overflow-hidden relative shadow-md flex items-center justify-center p-1`}>
+            <img 
+              src={icon.customImageUrl} 
+              alt="Custom Icon" 
+              className="w-[60%] h-[60%] object-contain drop-shadow" 
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        );
+      }
+    }
+
+    return (
+      <div className={`${sizeClass} ${roundedClass} ${bgClass} shadow-md flex flex-col items-center justify-center relative p-0.5`}>
+        <SelectedIconComponent className={`${iconSizeClass} text-white drop-shadow`} />
+        {icon.text && sizeClass.includes('w-28') && (
+          <span className="text-[11px] font-black tracking-tight text-white/90 bg-black/30 px-1.5 py-0.5 rounded-full mt-1.5 uppercase font-sans">
+            {icon.text}
+          </span>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-[#090d16] text-slate-200 font-sans flex flex-col selection:bg-indigo-500 selection:text-white" id="main-container">
@@ -873,29 +980,38 @@ export default function App() {
               {/* THE VECTOR ICON STUDIO */}
               <div className="bg-slate-900/30 p-5 rounded-2xl border border-slate-800 space-y-5">
                 <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Vector Launcher Icon Studio</h3>
-                  <p className="text-[11px] text-slate-500">This icon represents your app on the home screen launcher. It will pack inside the ZIP bundle assets.</p>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Launcher Icon Studio</h3>
+                  <p className="text-[11px] text-slate-500">This icon represents your app on the home screen launcher. Create a vector style or upload a custom image.</p>
+                </div>
+
+                {/* Icon Source Mode Selector */}
+                <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 gap-1" id="icon-mode-selector">
+                  <button
+                    onClick={() => setIcon({ ...icon, useCustomImage: false })}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${!icon.useCustomImage ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Vector Glyph Builder
+                  </button>
+                  <button
+                    onClick={() => setIcon({ ...icon, useCustomImage: true })}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${icon.useCustomImage ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    Custom Image Upload
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
                   {/* Icon Live Preview Squircle */}
                   <div className="md:col-span-4 flex flex-col items-center gap-2">
-                    <span className="text-[10px] text-slate-500 uppercase tracking-widest font-sans font-bold">App Icon Squircle</span>
-                    <div className={`w-28 h-28 bg-gradient-to-tr ${icon.gradient} shadow-2xl p-0.5 flex flex-col items-center justify-center relative ${icon.shape === 'circle' ? 'rounded-full' : icon.shape === 'squircle' ? 'rounded-[32px]' : 'rounded-2xl'}`}>
-                      <SelectedIconComponent className="w-10 h-10 text-white drop-shadow" />
-                      {icon.text && (
-                        <span className="text-[11px] font-black tracking-tight text-white/90 bg-black/30 px-1.5 py-0.5 rounded-full mt-1.5 uppercase font-sans">
-                          {icon.text}
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-[10px] text-slate-500 uppercase tracking-widest font-sans font-bold">App Icon Preview</span>
+                    {renderAppIcon('w-28 h-28', 'w-10 h-10')}
                   </div>
 
                   {/* Icon Configuration Panel */}
                   <div className="md:col-span-8 space-y-4 text-left">
-                    {/* Glyph shape chooser */}
+                    {/* Background shape chooser (Available for both custom and vector) */}
                     <div className="space-y-1.5">
-                      <span className="text-xs font-semibold text-slate-300">Background Shape</span>
+                      <span className="text-xs font-semibold text-slate-300">Background Shape mask</span>
                       <div className="flex gap-2">
                         {['circle', 'squircle', 'rounded-rect'].map(s => (
                           <button
@@ -909,57 +1025,116 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Short Text overlay */}
-                    <div className="space-y-1.5">
-                      <span className="text-xs font-semibold text-slate-300">Letter Overlay (Max 3 characters)</span>
-                      <input
-                        type="text"
-                        maxLength={3}
-                        value={icon.text}
-                        onChange={(e) => setIcon({ ...icon, text: e.target.value })}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500 uppercase font-bold"
-                        placeholder="e.g. COF"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Gradients grid */}
-                <div className="space-y-2 text-left">
-                  <span className="text-xs font-semibold text-slate-300">Background Gradient Class</span>
-                  <div className="grid grid-cols-4 gap-2">
-                    {ICON_GRADIENTS.map(grad => (
-                      <button
-                        key={grad.name}
-                        onClick={() => setIcon({ ...icon, gradient: grad.class })}
-                        className={`h-9 bg-gradient-to-tr ${grad.class} rounded-lg border flex items-center justify-center transition hover:scale-105 ${icon.gradient === grad.class ? 'border-white scale-105' : 'border-transparent'}`}
-                        title={grad.name}
-                      >
-                        {icon.gradient === grad.class && <Check className="w-4 h-4 text-white" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Launcher Glyphs chooser */}
-                <div className="space-y-2 text-left">
-                  <span className="text-xs font-semibold text-slate-300">Adaptive Central Glyph</span>
-                  <div className="grid grid-cols-5 gap-2">
-                    {LAUNCHER_GLYPHS.map(glyph => {
-                      const GIcon = glyph.icon;
-                      return (
-                        <button
-                          key={glyph.name}
-                          onClick={() => setIcon({ ...icon, iconName: glyph.name })}
-                          className={`p-2 bg-slate-950 border rounded-lg flex flex-col items-center gap-1 hover:border-slate-600 transition ${icon.iconName === glyph.name ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10' : 'border-slate-800 text-slate-500'}`}
-                          title={glyph.name}
+                    {!icon.useCustomImage ? (
+                      /* Vector Short Text overlay */
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-semibold text-slate-300">Letter Overlay (Max 3 characters)</span>
+                        <input
+                          type="text"
+                          maxLength={3}
+                          value={icon.text}
+                          onChange={(e) => setIcon({ ...icon, text: e.target.value })}
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-indigo-500 uppercase font-bold"
+                          placeholder="e.g. COF"
+                        />
+                      </div>
+                    ) : (
+                      /* Custom Icon Upload File Picker & Control Details */
+                      <div className="space-y-3">
+                        <span className="text-xs font-semibold text-slate-300">Upload Icon File (PNG, JPG, SVG)</span>
+                        
+                        <div 
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                              handleCustomIconUpload(e.dataTransfer.files[0]);
+                            }
+                          }}
+                          className="border-2 border-dashed border-slate-800 hover:border-indigo-500/50 bg-slate-950/40 p-4 rounded-xl text-center cursor-pointer transition relative group"
                         >
-                          <GIcon className="w-4 h-4" />
-                        </button>
-                      );
-                    })}
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                handleCustomIconUpload(e.target.files[0]);
+                              }
+                            }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <Upload className="w-5 h-5 mx-auto text-slate-500 group-hover:text-indigo-400 transition mb-1" />
+                          <p className="text-[10px] text-slate-300 font-medium">Drag & drop or <span className="text-indigo-400 font-bold">browse</span></p>
+                          <p className="text-[9px] text-slate-500 mt-0.5">Supports PNG, JPG, WebP, SVG up to 2MB</p>
+                        </div>
+
+                        {icon.customImageUrl && (
+                          <div className="space-y-2 pt-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Image Fitting Option</span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => setIcon({ ...icon, customImageMode: 'cover' })}
+                                className={`flex-1 py-1 px-2.5 rounded-lg text-[11px] font-medium border transition ${icon.customImageMode === 'cover' ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                              >
+                                Full Cover Crop
+                              </button>
+                              <button
+                                onClick={() => setIcon({ ...icon, customImageMode: 'fit' })}
+                                className={`flex-1 py-1 px-2.5 rounded-lg text-[11px] font-medium border transition ${icon.customImageMode === 'fit' ? 'bg-indigo-600/20 text-indigo-400 border-indigo-500' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                              >
+                                Centered Fit
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Conditionally Render Gradients & central glyph controls based on customization choices */}
+                {(!icon.useCustomImage || icon.customImageMode === 'fit') && (
+                  <div className="space-y-4 pt-1 animate-fade-in">
+                    {/* Gradients grid */}
+                    <div className="space-y-2 text-left">
+                      <span className="text-xs font-semibold text-slate-300">Background Gradient Class</span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {ICON_GRADIENTS.map(grad => (
+                          <button
+                            key={grad.name}
+                            onClick={() => setIcon({ ...icon, gradient: grad.class })}
+                            className={`h-9 bg-gradient-to-tr ${grad.class} rounded-lg border flex items-center justify-center transition hover:scale-105 ${icon.gradient === grad.class ? 'border-white scale-105' : 'border-transparent'}`}
+                            title={grad.name}
+                          >
+                            {icon.gradient === grad.class && <Check className="w-4 h-4 text-white" />}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {!icon.useCustomImage && (
+                      /* Launcher Glyphs chooser */
+                      <div className="space-y-2 text-left">
+                        <span className="text-xs font-semibold text-slate-300">Adaptive Central Glyph</span>
+                        <div className="grid grid-cols-5 gap-2">
+                          {LAUNCHER_GLYPHS.map(glyph => {
+                            const GIcon = glyph.icon;
+                            return (
+                              <button
+                                key={glyph.name}
+                                onClick={() => setIcon({ ...icon, iconName: glyph.name })}
+                                className={`p-2 bg-slate-950 border rounded-lg flex flex-col items-center gap-1 hover:border-slate-600 transition ${icon.iconName === glyph.name ? 'border-indigo-500 text-indigo-400 bg-indigo-500/10' : 'border-slate-800 text-slate-500'}`}
+                                title={glyph.name}
+                              >
+                                <GIcon className="w-4 h-4" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* SPLASH SCREEN STYLES CONFIG */}
@@ -1250,9 +1425,7 @@ export default function App() {
               {/* FLOATING PUSH NOTIFICATION SIMULATION CARD */}
               {notification?.open && (
                 <div className="absolute top-8 left-2 right-2 z-50 bg-slate-900/95 border border-slate-800 shadow-2xl p-3 rounded-2xl flex items-start gap-2.5 animate-bounce" id="push-notification-banner">
-                  <div className={`p-2 rounded-lg shrink-0 text-white bg-gradient-to-tr ${icon.gradient}`}>
-                    <SelectedIconComponent className="w-4 h-4" />
-                  </div>
+                  {renderAppIcon('w-8 h-8', 'w-4 h-4')}
                   <div className="flex-1 text-left">
                     <span className="text-[10px] font-extrabold uppercase text-indigo-400 tracking-wider">Alert Notification</span>
                     <p className="text-[10px] text-slate-200 font-medium leading-normal mt-0.5">{notification.text}</p>
@@ -1283,9 +1456,7 @@ export default function App() {
                       className="flex flex-col items-center gap-1 cursor-pointer group"
                       id="launch-my-app"
                     >
-                      <div className={`w-11.5 h-11.5 bg-gradient-to-tr ${icon.gradient} shadow-md flex items-center justify-center p-0.5 group-active:scale-95 transform transition ${icon.shape === 'circle' ? 'rounded-full' : icon.shape === 'squircle' ? 'rounded-xl' : 'rounded-lg'}`}>
-                        <SelectedIconComponent className="w-5 h-5 text-white" />
-                      </div>
+                      {renderAppIcon('w-11.5 h-11.5', 'w-5 h-5')}
                       <span className="text-[9px] font-bold text-white tracking-tight truncate max-w-[62px] block">{meta.name}</span>
                     </div>
 
@@ -1322,8 +1493,8 @@ export default function App() {
                 >
                   <div className="pt-16 space-y-4">
                     {/* Icon render */}
-                    <div className={`w-20 h-20 bg-gradient-to-tr ${icon.gradient} shadow-2xl p-0.5 mx-auto flex items-center justify-center animate-pulse ${icon.shape === 'circle' ? 'rounded-full' : icon.shape === 'squircle' ? 'rounded-[24px]' : 'rounded-xl'}`}>
-                      <SelectedIconComponent className="w-8 h-8 text-white" />
+                    <div className="mx-auto flex justify-center animate-pulse">
+                      {renderAppIcon('w-20 h-20', 'w-8 h-8')}
                     </div>
                     <h2 className="text-white font-extrabold text-sm tracking-tight">{meta.name}</h2>
                   </div>

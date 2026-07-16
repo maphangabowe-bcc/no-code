@@ -11,6 +11,9 @@ export interface AppIcon {
   iconName: string; // lucide icon name
   text: string;
   gradient: string; // css gradient class
+  customImageUrl?: string; // base64 representation of custom uploaded icon
+  useCustomImage?: boolean; // toggle to use custom icon
+  customImageMode?: 'cover' | 'fit'; // mode of the custom image: full cover or center-fitted
 }
 
 export interface AppDesign {
