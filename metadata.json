@@ -1,0 +1,8 @@
+{
+  "name": "No-Code Mobile App Builder",
+  "description": "Convert web URLs, custom HTML/JS code, or AI-generated pages into fully customizable Android mobile apps with real-time emulation, native feature simulators, and downloadable Gradle/Capacitor project structures.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
