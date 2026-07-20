@@ -145,6 +145,24 @@ dependencies {
   zip.file("app/src/main/assets/www/index.html", htmlCode);
   zip.file("app/src/main/assets/www/icon.svg", iconSvg);
   
+  // 7.1 Add PWA Manifest for Web-to-Mobile readiness
+  const pwaManifest = {
+    name: meta.name,
+    short_name: meta.name.substring(0, 12),
+    start_url: "index.html",
+    display: "standalone",
+    background_color: design.themeMode === 'dark' ? '#0f172a' : '#f8fafc',
+    theme_color: design.primaryColor,
+    icons: [
+      {
+        src: "icon.svg",
+        sizes: "any",
+        type: "image/svg+xml"
+      }
+    ]
+  };
+  zip.file("app/src/main/assets/www/manifest.json", JSON.stringify(pwaManifest, null, 2));
+
   // Custom metadata and Store Listing descriptions file
   const customMetadataJson = {
     appName: meta.name,
@@ -166,23 +184,27 @@ dependencies {
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="${meta.packageId}">
 
-    <!-- Core Internet Permission -->
+    <!-- Core Internet & Network Status -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-${permissions.camera ? '    <uses-permission android:name="android.permission.CAMERA" />\n' : ''}${permissions.location ? '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n' : ''}${permissions.notifications ? '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n' : ''}${permissions.biometric ? '    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n' : ''}
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+${permissions.camera ? '    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n' : ''}${permissions.location ? '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n' : ''}${permissions.notifications ? '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n' : ''}${permissions.biometric ? '    <uses-permission android:name="android.permission.USE_BIOMETRIC" />\n' : ''}
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.AppTheme">
+        android:theme="@style/Theme.AppTheme"
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true">
         
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:screenOrientation="${design.orientation === 'landscape' ? 'landscape' : 'portrait'}"
-            android:configChanges="orientation|screenSize|keyboardHidden">
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -241,6 +263,8 @@ ${permissions.camera ? '    <uses-permission android:name="android.permission.CA
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.os.Bundle;
+import android.view.View;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -256,30 +280,41 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
-        // Dynamic full-screen WebView container
+        // Setup WebView
         mWebView = new WebView(this);
         setContentView(mWebView);
 
         // Hardware accelerated performance configuration
-        mWebView.getSettings().setJavaScriptEnabled(true);
-        mWebView.getSettings().setDomStorageEnabled(true);
-        mWebView.getSettings().setDatabaseEnabled(true);
-        mWebView.getSettings().setAllowFileAccess(true);
-        mWebView.getSettings().setAllowContentAccess(true);
-        mWebView.getSettings().setLoadWithOverviewMode(true);
-        mWebView.getSettings().setUseWideViewPort(true);
-        mWebView.getSettings().setSupportZoom(false);
-        mWebView.getSettings().setBuiltInZoomControls(false);
+        WebSettings settings = mWebView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setMediaPlaybackRequiresUserGesture(false);
 
         // Web Client interceptor
         mWebView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                // Page loaded successfully Toast indication
-                Toast.makeText(MainActivity.this, "App loaded successfully", Toast.LENGTH_SHORT).show();
+                // Page loaded successfully
+            }
+
+            @SuppressWarnings("deprecation")
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                Toast.makeText(MainActivity.this, "Load error: " + description, Toast.LENGTH_SHORT).show();
             }
         });
+
+        // Handle JS Alerts, File Choose, etc
+        mWebView.setWebChromeClient(new WebChromeClient());
 
         // Load self-contained web assets
         mWebView.loadUrl("file:///android_asset/www/index.html");

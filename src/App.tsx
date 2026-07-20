@@ -124,8 +124,59 @@ export default function App() {
   const [currentTime, setCurrentTime] = useState<string>('12:00 PM');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Icon AI generation states
+  const [iconMethod, setIconMethod] = useState<'vector' | 'upload' | 'ai'>('vector');
+  const [iconPrompt, setIconPrompt] = useState<string>('');
+  const [isGeneratingIcon, setIsGeneratingIcon] = useState<boolean>(false);
+
   const logsEndRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Prefill AI Icon Prompt when app metadata changes
+  useEffect(() => {
+    if (meta.name && meta.description) {
+      setIconPrompt(`Minimalist flat vector app icon for "${meta.name}" app. Description: ${meta.description}`);
+    }
+  }, [meta.name, meta.description]);
+
+  // Handle generating launcher icon using server-side Gemini image generation API
+  const handleGenerateAIIcon = async () => {
+    if (!iconPrompt.trim()) {
+      triggerToast("Please enter an icon description first.");
+      return;
+    }
+    setIsGeneratingIcon(true);
+    triggerToast("Generating your custom launcher icon with Gemini...");
+    try {
+      const response = await fetch('/api/generate-icon', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ prompt: iconPrompt })
+      });
+
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.error || "Failed to generate AI icon.");
+      }
+
+      if (data.imageUrl) {
+        setIcon(prev => ({
+          ...prev,
+          customImageUrl: data.imageUrl,
+          useCustomImage: true,
+          customImageMode: 'cover'
+        }));
+        triggerToast("AI Icon generated and applied successfully!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      triggerToast(err.message || "Failed to generate AI icon.");
+    } finally {
+      setIsGeneratingIcon(false);
+    }
+  };
 
   // 2. Initialize with Coffee Shop Template
   useEffect(() => {
@@ -624,8 +675,8 @@ export default function App() {
           </div>
 
           <div className="bg-slate-900 border border-slate-800 text-xs text-slate-400 px-3.5 py-1.5 rounded-lg flex items-center gap-2 font-mono">
-            <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-            v34.0 (Android Studio wrapper)
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Android Mobile Ready
           </div>
         </div>
       </header>
@@ -1166,19 +1217,34 @@ export default function App() {
                   <p className="text-[11px] text-slate-500">This icon represents your app on the home screen launcher. Create a vector style or upload a custom image.</p>
                 </div>
 
-                {/* Icon Source Mode Selector */}
+                 {/* Icon Source Mode Selector */}
                 <div className="flex bg-slate-950 p-1.5 rounded-xl border border-slate-800 gap-1" id="icon-mode-selector">
                   <button
-                    onClick={() => setIcon({ ...icon, useCustomImage: false })}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${!icon.useCustomImage ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
+                    onClick={() => {
+                      setIconMethod('vector');
+                      setIcon({ ...icon, useCustomImage: false });
+                    }}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${iconMethod === 'vector' ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     Vector Glyph Builder
                   </button>
                   <button
-                    onClick={() => setIcon({ ...icon, useCustomImage: true })}
-                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${icon.useCustomImage ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
+                    onClick={() => {
+                      setIconMethod('upload');
+                      setIcon({ ...icon, useCustomImage: true });
+                    }}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${iconMethod === 'upload' ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
                   >
                     Custom Image Upload
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIconMethod('ai');
+                      setIcon({ ...icon, useCustomImage: true });
+                    }}
+                    className={`flex-1 py-2 rounded-lg text-xs font-semibold transition ${iconMethod === 'ai' ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'text-slate-400 hover:text-slate-200'}`}
+                  >
+                    ✨ AI Icon Generator
                   </button>
                 </div>
 
@@ -1207,9 +1273,9 @@ export default function App() {
                       </div>
                     </div>
 
-                    {!icon.useCustomImage ? (
+                    {iconMethod === 'vector' ? (
                       /* Vector Short Text overlay */
-                      <div className="space-y-1.5">
+                      <div className="space-y-1.5 animate-fade-in">
                         <span className="text-xs font-semibold text-slate-300">Letter Overlay (Max 3 characters)</span>
                         <input
                           type="text"
@@ -1220,9 +1286,9 @@ export default function App() {
                           placeholder="e.g. COF"
                         />
                       </div>
-                    ) : (
+                    ) : iconMethod === 'upload' ? (
                       /* Custom Icon Upload File Picker & Control Details */
-                      <div className="space-y-3">
+                      <div className="space-y-3 animate-fade-in">
                         <span className="text-xs font-semibold text-slate-300">Upload Icon File (PNG, JPG, SVG)</span>
                         
                         <div 
@@ -1267,6 +1333,55 @@ export default function App() {
                                 Centered Fit
                               </button>
                             </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* AI App Icon Generation Mode */
+                      <div className="space-y-3 animate-fade-in">
+                        <span className="text-xs font-semibold text-slate-300">Generate Icon with Gemini Image AI</span>
+                        
+                        <div className="space-y-2">
+                          <textarea
+                            value={iconPrompt}
+                            onChange={(e) => setIconPrompt(e.target.value)}
+                            rows={3}
+                            placeholder="Describe your desired app icon launcher logo..."
+                            className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-indigo-500 font-sans leading-relaxed"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleGenerateAIIcon}
+                            disabled={isGeneratingIcon}
+                            className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:opacity-50 text-white font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-md animate-pulse-slow"
+                          >
+                            {isGeneratingIcon ? (
+                              <>
+                                <RefreshCcw className="w-3.5 h-3.5 animate-spin" />
+                                Generating App Icon with AI...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkle className="w-3.5 h-3.5" />
+                                Generate Custom App Icon
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        {icon.customImageUrl && icon.customImageUrl.startsWith('data:') && (
+                          <div className="text-[11px] text-indigo-400 font-semibold bg-indigo-500/10 border border-indigo-500/20 rounded-lg p-2.5 flex items-center justify-between gap-1.5 mt-2 animate-fade-in">
+                            <div className="flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                              <span>Successfully applied generated AI Icon!</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setIcon({ ...icon, customImageMode: icon.customImageMode === 'cover' ? 'fit' : 'cover' })}
+                              className="text-[9px] font-bold text-indigo-300 hover:text-indigo-200 border border-indigo-500/30 rounded px-1.5 py-0.5"
+                            >
+                              Toggle: {icon.customImageMode === 'cover' ? 'Fit' : 'Cover'}
+                            </button>
                           </div>
                         )}
                       </div>
@@ -1418,22 +1533,22 @@ export default function App() {
               <div className="border-b border-slate-800 pb-4">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Cpu className="text-indigo-400 w-5 h-5" />
-                  Compile & Package Application
+                  Compile & Package Mobile APK
                 </h2>
                 <p className="text-xs text-slate-400 mt-1">
-                  Run the live in-browser compiler wrapper. Bundles assets, sets up ProGuard signatures, and produces signed Android binaries.
+                  Run the live in-browser compiler wrapper. Bundles assets, sets up ProGuard signatures, and produces production-ready Android binaries.
                 </p>
               </div>
 
               {/* Compilation trigger card */}
               <div className="bg-slate-900/40 p-5 rounded-2xl border border-slate-800 text-center space-y-4">
-                <div className="w-12 h-12 bg-indigo-500/10 text-indigo-400 rounded-full flex items-center justify-center mx-auto text-xl shadow-inner">
-                  <Cpu className={isCompiling ? "w-6 h-6 animate-spin" : "w-6 h-6"} />
+                <div className="w-12 h-12 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto text-xl shadow-inner border border-emerald-500/20">
+                  <ShieldCheck className={isCompiling ? "w-6 h-6 animate-spin" : "w-6 h-6"} />
                 </div>
                 <div className="space-y-1">
-                  <h4 className="font-bold text-sm text-slate-200">Compile Sandbox Release Gradle</h4>
+                  <h4 className="font-bold text-sm text-slate-200 uppercase tracking-tight">Production Release Build</h4>
                   <p className="text-[11px] text-slate-500 px-6">
-                    Runs build tasks that bundle your modified index.html, resolve system manifests, and map permissions into a downloadable APK binary.
+                    Generates a fully-signed debug APK and a Gradle project source. The resulting ZIP is mobile-ready for installation via side-loading or direct Android Studio import.
                   </p>
                 </div>
 
@@ -1512,6 +1627,34 @@ export default function App() {
                   </div>
                 </div>
               )}
+
+              {/* Mobile Readiness Checklist */}
+              <div className="bg-slate-900/20 border border-slate-800/60 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center gap-2 text-white">
+                  <Smartphone className="w-4 h-4 text-indigo-400" />
+                  <h4 className="text-xs font-bold uppercase tracking-wider">Mobile Installation Guide</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-300">
+                      <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[10px] text-indigo-400">1</div>
+                      Direct Side-loading
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-relaxed pl-7">
+                      Download the APK, transfer to your Android device, and open it. Ensure "Install from Unknown Sources" is enabled in settings.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-300">
+                      <div className="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[10px] text-indigo-400">2</div>
+                      Play Store Ready
+                    </div>
+                    <p className="text-[10px] text-slate-500 leading-relaxed pl-7">
+                      The Source ZIP contains the complete Android Studio project. Open in IDE, click "Build Signed Bundle" to prepare for Google Play.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </section>

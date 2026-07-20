@@ -86,6 +86,51 @@ Ensure it has a high level of interactive fidelity (e.g., clickable tabs, functi
     }
   });
 
+  // API Endpoint: Generate app icon using Gemini Image Generation
+  app.post("/api/generate-icon", async (req, res) => {
+    try {
+      const { prompt } = req.body;
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt/description is required" });
+      }
+
+      if (!ai) {
+        return res.status(503).json({ 
+          error: "Gemini API key is not configured. Please set your GEMINI_API_KEY in the Secrets panel." 
+        });
+      }
+
+      // Construct a highly optimized prompt for app icon generation
+      const iconPrompt = `A clean, minimalist flat vector mobile app icon for a concept called: "${prompt}".
+Style: Flat design icon, vibrant, modern tech-app asset, simple rounded shapes, highly recognizable centered symbol or logo, colorful gradients or solid vibrant background, high contrast, perfect for a high-fidelity mobile application launcher on a screen.
+Avoid completely: Realistic details, 3D shadows, device screen, mobile phone bodies, or small complex text labels.`;
+
+      const response = await ai.models.generateImages({
+        model: "imagen-3.0-generate-002",
+        prompt: iconPrompt,
+        config: {
+          numberOfImages: 1,
+          outputMimeType: "image/png",
+          aspectRatio: "1:1",
+        }
+      });
+
+      let base64Image = "";
+      if (response.generatedImages?.[0]?.image?.imageBytes) {
+        base64Image = response.generatedImages[0].image.imageBytes;
+      }
+
+      if (!base64Image) {
+        return res.status(500).json({ error: "Failed to extract generated image from the model response." });
+      }
+
+      res.json({ imageUrl: `data:image/png;base64,${base64Image}` });
+    } catch (error: any) {
+      console.error("Error generating icon:", error);
+      res.status(500).json({ error: error?.message || "Failed to generate app icon." });
+    }
+  });
+
   // Vite middleware setup for development, or static serving in production
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
